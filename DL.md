@@ -436,15 +436,21 @@ $$
 
 ![](image\残差块细节.png)
 
+------
 
+## 深度学习硬件知识
 
+----
 
+![](image\cpu_1.png)
 
+![](image\cpu_2.png)
 
+![](image\cpuVSgpu.png)
 
+![](image\提升GPU利用率.png)
 
-
-
+![](D:\Deep_Limage\高性能编程.png)
 
 
 
