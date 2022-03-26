@@ -927,6 +927,16 @@ net = nn.Sequential(b1, b2, b3, b4, b5, nn.Linear(1024, 10))
 
 ----
 
+# 批量归一化
+
+-----
+
+``` python
+nn.Linear(256, 120), nn.BatchNorm1d(120),
+```
+
+------
+
 # ResNet
 
 ----
