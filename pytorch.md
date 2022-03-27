@@ -942,11 +942,113 @@ nn.Linear(256, 120), nn.BatchNorm1d(120),
 ----
 
 ``` python
+
+
+
 ```
 
 ----
 
+# OpenCV读取图片格式转tensor
 
+---
+
+- OpenCV储存图片格式是（H,W,C），而torch储存的格式是（C,H,W）
+
+- 在使用 transforms.ToTensor() 进行图片数据转换过程中会对图像的像素值进行正则化，即一般读取的图片像素值都是8 bit 的二进制，那么它的十进制的范围为 [0, 255]，而正则化会对每个像素值除以255，也就是把像素值正则化成 [0.0, 1.0]的范围。
+
+- 使用torchvision.transforms时要注意一下，其子函数 ToTensor() 是没有参数输入的
+
+``` python
+import torchvision.transforms as transforms
+import cv2 as cv
+
+img = cv.imread('1.jpg')
+print(img.shape)   # numpy数组格式为（H,W,C）
+
+transf = transforms.ToTensor()#实例化，且括号内无输入
+img_tensor = transf(img)  # tensor数据格式是torch(C,H,W)
+```
+
+---
+
+## 自行修改正则化的范围
+
+------
+
+``` python
+transf2 = transforms.Compose(#正则化成 [-1.0, 1.0]
+    [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+    ]
+)
+
+img_tensor2 = transf2(img)
+print(img_tensor2)
+```
+
+- 计算方式就是：
+
+- $$
+  C=\frac{C-mean}{std}
+  $$
+
+  
+
+- C为每个通道的所有像素值，彩色图片为三通道图像（BGR），所以mean和std是三个数的数组。使用transforms.ToTensor()时已经正则化成 [0.0, 0.1]了，那么(0.0 - 0.5)/0.5=-1.0，(1.0 - 0.5)/0.5=1.0，所以正则化成 [-1.0, 1.0]
+
+----
+
+## 显示tensor图片（OpenCV读取）
+
+----
+
+``` python
+import cv2
+import torchvision
+from torchvision.transforms import ToPILImage
+img=cv2.imread('00.jpg')
+Totensor=torchvision.transforms.ToTensor()
+img_tensor=Totensor(img)
+change=torchvision.transforms.RandomAffine(0.5)
+result=change(img_tensor)
+show = ToPILImage() # 可以把Tensor转成Image，方便可视化
+show(result).show()
+```
+
+-----
+
+# tensor转numpy（用cv2显示）
+
+----
+
+``` python
+import numpy as np
+img_cv=result.numpy()#将tensor数据转为numpy数据
+maxValue=img_cv.max()
+img_cv=img_cv*255/maxValue#normalize，将图像数据扩展到[0,255]
+mat=np.uint8(img_cv)#float32-->uint8
+print('mat_shape:',mat.shape)
+mat=mat.transpose(1,2,0)#将tensor的[C,H,W]转成opencv显示格式[H,W,C],numpy内置函数
+cv2.imshow("img",mat)
+cv2.waitKey()
+```
+
+- OpenCV支持的图像数据是numpy格式，数据类型为uint8，而且像素值分布在[0,255]之间。 但是tensor数据像素值并不是分布在[0,255]，且数据类型为float32,所以需要做一下normalize和数据变换，将图像数据扩展到[0,255]。
+- OpenCV中的颜色通道顺序是BGR而PIL、torch里面的图像颜色通道是RGB
+
+-----
+
+# 图像增广（image augmentation）
+
+-------
+
+- 图像增广技术通过对训练图像做一系列随机改变，来产生相似但又不同的训练样本，从而扩大训练数据集的规模。
+- 图像增广的另一种解释是，随机改变训练样本可以降低模型对某些属性的依赖，从而提高模型的泛化能力。
+
+``` python
+```
 
 
 

@@ -450,7 +450,29 @@ $$
 
 ![](image\提升GPU利用率.png)
 
-![](D:\Deep_Limage\高性能编程.png)
+![](image\高性能编程.png)
+
+---
+
+## 数据增广
+
+----
+
+![](image\数据增强.png)
+
+![](image\使用增强数据训练.png)
+
+![](image\翻转.png)
+
+![](image\切割.png)
+
+![](image\颜色.png)
+
+![](image\其他方法.png)
+
+
+
+
 
 
 
