@@ -6,7 +6,9 @@
 
 - Dataset是一个包装类，用来将数据包装为Dataset类，然后传入DataLoader中，我们再使用DataLoader这个类来更加快捷的对数据进行操作
 
-
+``` python
+dataset=datasets.CIFAR10('./data',train=False,transform=torchvision.transforms.ToTensor(),download=False)
+```
 
 -----
 
@@ -14,7 +16,9 @@
 
 - DataLoader是一个比较重要的类，它为我们提供的常用操作有：batch_size（每个batch的大小），shuffle（是否进行shuffle操作），num_workers（加载数据的时候使用几个子进程）
 
-
+``` python
+dataloader=DataLoader(dataset,batch_size=64)
+```
 
 -------
 
@@ -82,6 +86,16 @@ $$
 tool=transforms.ToTensor()
 \\result=tool(input)
 $$
+
+-----
+
+## tansfroms.ToPILImage
+
+- 从Tensor到PIL
+
+
+
+
 
 ---
 
@@ -1048,11 +1062,114 @@ cv2.waitKey()
 - 图像增广的另一种解释是，随机改变训练样本可以降低模型对某些属性的依赖，从而提高模型的泛化能力。
 
 ``` python
+augs=torchvision.transforms.Compose([torchvision.transforms.RandomHorizontalFlip(),torchvision.transforms.ToTensor()])
+dataset=datasets.CIFAR10('./data',train=False,transform=torchvision.augs,download=False)
 ```
 
+-------
 
+# Init
 
+-----
 
+## 均匀分布
 
+``` python
+torch.nn.init.uniform_(tensor, a=0, b=1)
+```
 
+- 服从~U(a,b)
+
+-----
+
+## 正太分布
+
+``` python
+torch.nn.init.normal_(tensor, mean=0, std=1)
+```
+
+- 服从~N(mean,std)
+
+-----
+
+## 初始化为常数
+
+``` python
+torch.nn.init.constant_(tensor, val)
+```
+
+- 初始化整个矩阵为常数val
+
+-----
+
+## Xavier
+
+- 基本思想是通过网络层时，输入和输出的方差相同，包括前向传播和后向传播
+- 为了使得网络中信息更好的流动，每一层输出的方差应该尽量相等。
+
+- 如果初始化值很小，那么随着层数的传递，方差就会趋于0，此时输入值 也变得越来越小，在sigmoid上就是在0附近，接近于线性，失去了非线性
+- 如果初始值很大，那么随着层数的传递，方差会迅速增加，此时输入值变得很大，而sigmoid在大输入值写倒数趋近于0，反向传播时会遇到梯度消失的问题
+- pytorch提供两个版本
+
+### uniform
+
+``` python
+torch.nn.init.xavier_uniform_(tensor, gain=1)#均匀分布 ~ U(−a,a)
+```
+
+$$
+a=gain* \sqrt{\frac{6}{fan\_in+fan\_out}}
+$$
+
+### normal
+
+``` python
+torch.nn.init.xavier_normal_(tensor, gain=1)#正态分布~N(0,std)
+```
+
+$$
+std=gain* \sqrt{\frac{2}{fan\_in+fan\_out}}
+$$
+
+-----
+
+### Kaiming
+
+- Xavier在tanh中表现的很好，但在Relu激活函数中表现的很差，所以何凯明提出了针对于Relu的初始化方法
+
+- 该方法基于He initialization,其简单的思想是：
+  - 在ReLU网络中，假定每一层有一半的神经元被激活，另一半为0，所以，要保持方差不变，只需要在 Xavier 的基础上再除以2，也就是说在方差推到过程中，式子左侧除以2
+
+- pytorch提供两个版本
+
+``` python
+torch.nn.init.kaiming_uniform_(tensor, a=0, mode=‘fan_in’, nonlinearity=‘leaky_relu’)#均匀分布 ~ U(−bound,bound)
+```
+
+$$
+bound=\sqrt{\frac{6}{(1+a^2)*fan\_in}}
+$$
+
+```  python
+torch.nn.init.kaiming_normal_(tensor, a=0, mode=‘fan_in’, nonlinearity=‘leaky_relu’)#正态分布 ~ N(0,std)
+```
+
+$$
+std=\sqrt{\frac{2}{(1+a^2)*fan\_in}}
+$$
+
+- 两函数的参数：
+
+- a：该层后面一层的激活函数中负的斜率(默认为ReLU，此时a=0)
+
+- mode：‘fan_in’ (default) 或者 ‘fan_out’. 使用fan_in保持weights的方差在前向传播中不变；使用fan_out保持weights的方差在反向传播中不变
+
+--------
+
+# 微调
+
+----
+
+``` 
+```
 
