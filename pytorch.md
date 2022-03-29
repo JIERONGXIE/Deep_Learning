@@ -67,6 +67,7 @@ writer.close()
 ## tansfroms.ToTensor()
 
 - 将图片格式改为<class 'torch.Tensor'>
+- Convert a PIL Image or numpy.ndarray to tensor
 
 ``` python
 img_path='data\\'
@@ -91,11 +92,143 @@ $$
 
 ## tansfroms.ToPILImage
 
-- 从Tensor到PIL
+- Convert a tensor or an ndarray to PIL Image
 
 
 
+------
 
+## transfroms.Normalize(mean, std)
+
+- 这里使用的是标准正态分布变换，这种方法需要使用原始数据的均值（Mean）和标准差（Standard Deviation）来进行数据的标准化，在经过标准化变换之后，数据全部符合均值为0、标准差为1的标准正态分布
+
+$$
+x=\frac{x-mean}{std}
+$$
+
+- 一般来说，mean和std是实现从原始数据计算出来的，对于计算机视觉，更常用的方法是从样本中抽样算出来的或者是事先从相似的样本预估一个标准差和均值
+- 如下代码，对三通道的图片进行标准化
+
+``` python
+# 标准化是把图片3个通道中的数据整理到规范区间 x = (x - mean(x))/stddev(x)
+# [0.485, 0.456, 0.406]这一组平均值是从imagenet训练集中抽样算出来的
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+```
+
+---
+
+## transforms.Resize(size)
+
+- size可以是一个整型数据，也可以是一个类似于 (h ,w) 的序列
+- 如果输入是个(h,w)的序列，h代表高度，w代表宽度，h和w都是int，则直接将输入图像resize到这个(h,w)尺寸，相当于force
+- 如果使用的是一个整型数据，则将图像的短边resize到这个int数，长边则根据对应比例调整，图像的长宽比不变
+  
+
+``` python
+test=transforms.Resize(224)(img)
+print(test.size)
+plt.imshow(test)
+```
+
+-------
+
+## transforms.Scale(size)
+
+- 传入的size只能是一个整型数据，size是指缩放后图片最小边的边长。如果原图的height>width,那么改变大小后的图片大小是(size*height/width, size)
+
+``` python
+test=transforms.Scale(224)(img)
+print(test.size)
+plt.imshow(test)
+```
+
+-------
+
+## transforms.CenterCrop(size)
+
+- 以输入图的中心点为中心点为参考点，按我们需要的大小进行裁剪
+- 传递给这个类的参数可以是一个整型数据，也可以是一个类似于(h,w)的序列
+- 如果输入的是一个整型数据，那么裁剪的长和宽都是这个数值
+
+``` python
+test=transforms.CenterCrop((500,500))(img)
+print(test.size)
+plt.imshow(test)
+```
+
+-----
+
+## transforms.RandomCrop(size)
+
+- 用于对载入的图片按我们需要的大小进行随机裁剪。传递给这个类的参数可以是一个整型数据，也可以是一个类似于(h,w)的序列
+- 如果输入的是一个整型数据，那么裁剪的长和宽都是这个数值
+
+``` python
+test=transforms.RandomCrop(224)(img)
+print(test.size)
+plt.imshow(test)
+```
+
+------
+
+## transforms.RandomResizedCrop(size,scale)
+
+- 先将给定图像随机裁剪为不同的大小和宽高比，然后缩放所裁剪得到的图像为size的大小
+- 即先随机采集，然后对裁剪得到的图像安装要求缩放，默认scale=(0.08, 1.0)
+- scale是一个面积采样的范围，假如是一个100 * 100的图片，scale = (0.5,1.0)，采样面积最小是0.5 * 100 * 100=5000，最大面积就是原图大小100 * 100=10000。先按照scale将给定图像裁剪，然后再按照给定的输出大小进行缩放
+
+``` python
+test=transforms.RandomResizedCrop(224)(img)
+#test=transforms.RandomResizedCrop(224,scale=(0.5,0.8))(img)
+print(test.size)
+plt.imshow(test)
+```
+
+-----
+
+## transforms.RandomHorizontalFlip
+
+- 用于对载入的图片按随机概率进行水平翻转。我们可以通过传递给这个类的参数自定义随机概率，如果没有定义，则使用默认的概率值0.5
+
+``` python
+test=transforms.RandomHorizontalFlip()(img)
+print(test.size)
+plt.imshow(test)
+```
+
+-----
+
+## transforms.RandomVerticalFlip
+
+- 用于对载入的图片按随机概率进行垂直翻转。我们可以通过传递给这个类的参数自定义随机概率，如果没有定义，则使用默认的概率值0.5
+
+``` python
+test=transforms.RandomVerticalFlip()(img)
+print(test.size)
+plt.imshow(test)
+```
+
+-----
+
+## transforms.RandomRotation
+
+``` python
+transforms.RandomRotation(
+    degrees,
+    resample=False,
+    expand=False,
+    center=None,
+    fill=None,
+)
+test=transforms.RandomRotation((30,60))(img)
+print(test.size)
+plt.imshow(test)
+```
+
+- 功能：按照degree随机旋转一定角度
+- degree：加入degree是10，就是表示在（-10，10）之间随机旋转，如果是（30，60），就是30度到60度随机旋转
+- resample是重采样的方法
+- center表示中心旋转还是左上角旋转
 
 ---
 
@@ -1051,6 +1184,49 @@ cv2.waitKey()
 
 - OpenCV支持的图像数据是numpy格式，数据类型为uint8，而且像素值分布在[0,255]之间。 但是tensor数据像素值并不是分布在[0,255]，且数据类型为float32,所以需要做一下normalize和数据变换，将图像数据扩展到[0,255]。
 - OpenCV中的颜色通道顺序是BGR而PIL、torch里面的图像颜色通道是RGB
+
+----
+
+# plt显示图片
+
+-----
+
+## cv2读取
+
+``` python
+import cv2
+import matplotlib.pyplot as plt
+from  torchvision import transforms
+img=cv2.imread('00.jpg')
+transformer = transforms.Compose([
+	transforms.ToPILImage(),
+    transforms.Resize(256),
+    transforms.transforms.RandomResizedCrop((224), scale = (0.5,1.0)),
+    transforms.RandomHorizontalFlip(),
+])
+test=transformer(img)
+plt.imshow(test)
+plt.show()
+```
+
+-------
+
+## Image读取
+
+``` python
+from PIL import Image
+import matplotlib.pyplot as plt
+from  torchvision import transforms
+img=Image.open('00.jpg')
+transformer = transforms.Compose([
+    transforms.Resize(256),
+    transforms.transforms.RandomResizedCrop((224), scale = (0.5,1.0)),
+    transforms.RandomHorizontalFlip(),
+])
+test=transformer(img)
+plt.imshow(test)
+plt.show()
+```
 
 -----
 
