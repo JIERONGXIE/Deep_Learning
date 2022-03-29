@@ -1,0 +1,75 @@
+import torch
+import torchvision
+from torch import nn
+from torchvision import models
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+
+train_augs=torchvision.transforms.Compose([
+    torchvision.transforms.ToTensor(),
+])
+test_augs=torchvision.transforms.Compose([
+    torchvision.transforms.ToTensor(),
+])
+
+writer=SummaryWriter('resnet')#可视化
+
+train_data=torchvision.datasets.CIFAR10('./data',train=True,transform=train_augs,download=True)#train_dataset_size=50000
+test_data=torchvision.datasets.CIFAR10('./data',train=False,transform=test_augs,download=True)#test_dataset_size=10000
+train_dataloader=DataLoader(train_data,batch_size=64)
+test_dataloader=DataLoader(test_data,batch_size=64)
+
+train_dataset_size=len(train_data)
+test_dataset_size=len(test_data)
+
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+net=net.to(device)
+
+loss_fn=nn.CrossEntropyLoss()#损失函数实例化
+loss_fn=loss_fn.to(device)
+
+learning_rate=1e-2#学习率
+optimizer=torch.optim.SGD(net.parameters(),lr=learning_rate)#优化器实例化
+
+epoch=30
+
+total_train_step=0
+total_test_step=0
+for i in range(epoch):
+    print('-------第{}轮-------'.format(i+1))
+    total_train_loss=0
+    for data in train_dataloader:
+        imgs,targets=data
+        imgs=imgs.to(device)
+        targets=targets.to(device)
+        output=net(imgs)
+        loss=loss_fn(output,targets)
+        total_train_loss+=loss
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_train_step+=1
+        if total_train_step%100==0:
+            writer.add_scalar('tain_loss',loss.item(),total_train_step)
+    print('total_train_loss=',total_train_loss)
+
+    score=0
+    accuracy=0
+    total_test_loss=0
+    with torch.no_grad():
+        for data in test_dataloader:
+            imgs, targets = data
+            imgs = imgs.to(device)
+            targets = targets.to(device)
+            output = net(imgs)
+            loss = loss_fn(output, targets)
+            total_test_loss+=loss
+            total_test_step+=1
+            score+=(output.argmax(1)==targets).sum()
+        accuracy=score/test_dataset_size
+        writer.add_scalar('test_loss',loss.item(),total_test_step)
+        #torch.save('net{}.pth'.format(i))
+        print('total_test_loss=',total_test_loss)
+        print('accuracy=',accuracy)
+
