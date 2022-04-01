@@ -470,6 +470,54 @@ $$
 
 ![](image\其他方法.png)
 
+------
+
+## 锚框
+
+----
+
+![](image\锚框.png)
+
+- 直接预测object的bbox是比较难的，因为范围太广了，所以变通一下，改为预测anchor到真实box的偏移量
+
+![](image\IOU-交并比.png)
+
+![](image\赋予锚框标号.png)
+
+![](image\赋予锚框标号_1.png)
+
+- 矩阵的每个元素都是一个锚框与一个边缘框的IOU
+
+![](image\NMS.png)
+
+------
+
+## R-CNN
+
+-----
+
+![](image\R-CNN.png)
+
+![](image\ROI池化层.png)
+
+![](image\Fast RCNN.png)
+
+![](image\Mask R-CNN.png)
+
+![](image\物体检测识别总结.png)
+
+----
+
+## SSD
+
+---
+
+![](image\生成锚框.png)
+
+![](image\SSD模型.png)
+
+
+
 
 
 
