@@ -1,3 +1,58 @@
+# Anaconda
+
+- 查看安装了哪些包
+
+``` 
+conda list
+```
+
+- 查看当前存在哪些虚拟环境
+
+``` 
+conda env list 
+conda info -e
+```
+
+- 检查更新当前conda
+
+``` 
+conda update conda
+```
+
+- 创建虚拟环境
+
+``` 
+conda create -n test python=3.8
+```
+
+- 激活虚拟环境
+
+``` 
+Linux:	source activate test
+Windows:	activate test
+```
+
+- 关闭虚拟环境（即从当前环境退出返回使用PATH环境中的默认python版本）
+
+``` 
+Linux:	source deactivate 
+Windows:	deactivate
+```
+
+- 删除虚拟环境
+
+``` 
+conda remove -n your_env_name --all
+```
+
+- 删除环境钟的某个包
+
+``` 
+conda remove --name $your_env_name  $package_name 
+```
+
+----
+
 # Label Image
 
 -----
