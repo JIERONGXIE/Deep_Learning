@@ -506,7 +506,7 @@ class network(nn.Module):
         x=self.model(x)
         return x
 
-writer=SummaryWriter('logs')#可视化
+#writer=SummaryWriter('logs')#可视化
 
 train_data=torchvision.datasets.CIFAR10('./data',train=True,transform=torchvision.transforms.ToTensor(),download=True)#train_dataset_size=50000
 test_data=torchvision.datasets.CIFAR10('./data',train=False,transform=torchvision.transforms.ToTensor(),download=True)#test_dataset_size=10000
@@ -534,23 +534,28 @@ epoch=30
 for i in range(epoch):
     print('-------第{}轮-------'.format(i+1))
     total_train_loss=0
+    train_score=0
+    train_accuracy=0
     for data in train_dataloader:
         imgs,targets=data
         imgs=imgs.to(device)
         targets=targets.to(device)
         output=net(imgs)
+        train_score+=(output.argmax(1)==targets).sum()
         loss=loss_fn(output,targets)
         total_train_loss+=loss
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         total_train_step+=1
-        if total_train_step%100==0:
-            writer.add_scalar('tain',loss.item(),total_train_step)
+        # if total_train_step%100==0:
+        #     writer.add_scalar('tain',loss.item(),total_train_step)
         #print('损失',loss)
-    print('total_train_loss=',total_train_loss)
-    score=0
-    accuracy=0
+    train_accuracy=train_score/train_dataset_size
+    print('total_train_loss=',total_train_loss.item())
+    print('train_accuracy=',train_accuracy.item())
+    test_score=0
+    test_accuracy=0
     total_test_loss=0
     with torch.no_grad():
         for data in test_dataloader:
@@ -561,12 +566,12 @@ for i in range(epoch):
             loss = loss_fn(output, targets)
             total_test_loss+=loss
             total_test_step+=1
-            score+=(output.argmax(1)==targets).sum()
-        accuracy=score/test_dataset_size
-        writer.add_scalar('test',loss.item(),total_test_step)
-        torch.save('net{}.pth'.format(i))
-        print('total_test_loss=',total_test_loss)
-        print('accuracy=',accuracy)
+            test_score+=(output.argmax(1)==targets).sum()
+        test_accuracy=test_score/test_dataset_size
+        #writer.add_scalar('test',loss.item(),total_test_step)
+        #torch.save('net{}.pth'.format(i))
+        print('total_test_loss=',total_test_loss.item())
+        print('test_accuracy=',test_accuracy.item())
 ```
 
 ----
@@ -1089,9 +1094,53 @@ nn.Linear(256, 120), nn.BatchNorm1d(120),
 ----
 
 ``` python
+class Residual(nn.Module):
+    def __init__(self, input_channels, output_channels,
+                 use_1x1conv=False, strides=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(input_channels, output_channels,
+                               kernel_size=3, padding=1, stride=strides)
+        self.conv2 = nn.Conv2d(output_channels, output_channels,
+                               kernel_size=3, padding=1)
+        if use_1x1conv:
+            self.conv3 = nn.Conv2d(input_channels, output_channels,
+                                   kernel_size=1, stride=strides)
+        else:
+            self.conv3 = None
+        self.bn1 = nn.BatchNorm2d(output_channels)
+        self.bn2 = nn.BatchNorm2d(output_channels)
 
+    def forward(self, X):
+        Y = F.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3:
+            X = self.conv3(X)
+        Y += X
+        return F.relu(Y)
+    
+b1 = nn.Sequential(nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3),
+                   nn.BatchNorm2d(64), nn.ReLU(),
+                   nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
 
+def resnet_block(input_channels, output_channels, output_residuals,
+                 first_block=False):
+    blk = []
+    for i in range(output_residuals):
+        if i == 0 and not first_block:
+            blk.append(Residual(input_channels, output_channels,
+                                use_1x1conv=True, strides=2))
+        else:
+            blk.append(Residual(output_channels, output_channels))
+    return blk
 
+b2 = nn.Sequential(*resnet_block(64, 64, 2, first_block=True))
+b3 = nn.Sequential(*resnet_block(64, 128, 2))
+b4 = nn.Sequential(*resnet_block(128, 256, 2))
+b5 = nn.Sequential(*resnet_block(256, 512, 2))
+
+net = nn.Sequential(b1, b2, b3, b4, b5,
+                    nn.AdaptiveAvgPool2d((1,1)),
+                    nn.Flatten(), nn.Linear(512, 10))
 ```
 
 ----
@@ -1397,6 +1446,7 @@ nn.Linear(120,16),nn.BatchNorm2d(16)#自行理解输入16的含义
 
 ----
 
+<<<<<<< Updated upstream
 - 相当于迁移学习
 - 导入预训练的模型，用很低的学习率进行训练，且底层网络只做细微调整
 
@@ -1408,4 +1458,90 @@ nn.Linear(120,16),nn.BatchNorm2d(16)#自行理解输入16的含义
 # torch.meshgrid
 
 ------
+=======
+``` python
+from torchvision import models
+import torch
+import torchvision
+from torch import nn
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+
+
+net=models.resnet18(pretrained=False)
+net.fc=nn.Linear(512,10)
+#writer=SummaryWriter('logs')#可视化
+
+train_data=torchvision.datasets.CIFAR10('./data',train=True,transform=torchvision.transforms.ToTensor(),download=True)
+test_data=torchvision.datasets.CIFAR10('./data',train=False,transform=torchvision.transforms.ToTensor(),download=True)
+train_dataloader=DataLoader(train_data,batch_size=64)
+test_dataloader=DataLoader(test_data,batch_size=64)
+
+train_dataset_size=len(train_data)
+test_dataset_size=len(test_data)
+
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+#net=resnet()#网络模型实例化
+net=net.to(device)
+
+loss_fn=nn.CrossEntropyLoss()#损失函数实例化
+loss_fn=loss_fn.to(device)
+
+learning_rate=1e-2#学习率
+optimizer=torch.optim.SGD(net.parameters(),lr=learning_rate)#优化器实例化
+
+total_train_step=0
+total_test_step=0
+
+epoch=30
+for i in range(epoch):
+    print('-------第{}轮-------'.format(i+1))
+    total_train_loss=0
+    train_score=0
+    train_accuracy=0
+    for data in train_dataloader:
+        imgs,targets=data
+        imgs=imgs.to(device)
+        targets=targets.to(device)
+        output=net(imgs)
+        train_score+=(output.argmax(1)==targets).sum()
+        loss=loss_fn(output,targets)
+        total_train_loss+=loss
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_train_step+=1
+        # if total_train_step%100==0:
+        #     writer.add_scalar('tain',loss.item(),total_train_step)
+        #print('损失',loss)
+    train_accuracy=train_score/train_dataset_size
+    print('total_train_loss=',total_train_loss.item())
+    print('train_accuracy=',train_accuracy.item())
+    test_score=0
+    test_accuracy=0
+    total_test_loss=0
+    with torch.no_grad():
+        for data in test_dataloader:
+            imgs, targets = data
+            imgs = imgs.to(device)
+            targets = targets.to(device)
+            output = net(imgs)
+            loss = loss_fn(output, targets)
+            total_test_loss+=loss
+            total_test_step+=1
+            test_score+=(output.argmax(1)==targets).sum()
+        test_accuracy=test_score/test_dataset_size
+        #writer.add_scalar('test',loss.item(),total_test_step)
+        #torch.save('net{}.pth'.format(i))
+        print('total_test_loss=',total_test_loss.item())
+        print('test_accuracy=',test_accuracy.item())
+```
+
+-------
+
+# 语义分割
+
+-------------
+>>>>>>> Stashed changes
 
