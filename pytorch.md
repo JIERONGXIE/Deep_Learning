@@ -122,6 +122,7 @@ normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 
 - size可以是一个整型数据，也可以是一个类似于 (h ,w) 的序列
 - 如果输入是个(h,w)的序列，h代表高度，w代表宽度，h和w都是int，则直接将输入图像resize到这个(h,w)尺寸，相当于force
 - 如果使用的是一个整型数据，则将图像的短边resize到这个int数，长边则根据对应比例调整，图像的长宽比不变
+  
 
 ``` python
 test=transforms.Resize(224)(img)
@@ -578,7 +579,6 @@ for i in range(epoch):
 # GPU训练
 
 ----
-
 - 网络模型，数据，损失函数调用cuda()
 
 ---
@@ -1444,7 +1444,7 @@ nn.Linear(120,16),nn.BatchNorm2d(16)#自行理解输入16的含义
 
 # 微调（fine tuning）
 
----------
+-----
 
 - 相当于迁移学习
 - 导入预训练的模型，用很低的学习率进行训练，且底层网络只做细微调整
@@ -1485,6 +1485,7 @@ total_train_step=0
 total_test_step=0
 
 epoch=30
+model.train()
 for i in range(epoch):
     print('-------第{}轮-------'.format(i+1))
     total_train_loss=0
@@ -1511,6 +1512,7 @@ for i in range(epoch):
     test_score=0
     test_accuracy=0
     total_test_loss=0
+    model.eval()
     with torch.no_grad():
         for data in test_dataloader:
             imgs, targets = data
@@ -1534,85 +1536,31 @@ for i in range(epoch):
 
 ------
 
-=======
+- 可以用于生成坐标
+- 函数输入两个数据类型相同的一维张量，两个输出张量的行数为第一个输入张量的元素个数，列数为第二个输入张量的元素个数，当两个输入张量数据类型不同或维度不是一维时会报错
+- 第一个输出张量填充第一个输入张量中的元素，各行元素相同；第二个输出张量填充第二个输入张量中的元素各列元素相同
 
 ``` python
-from torchvision import models
 import torch
-import torchvision
-from torch import nn
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-
-
-net=models.resnet18(pretrained=False)
-net.fc=nn.Linear(512,10)
-#writer=SummaryWriter('logs')#可视化
-
-train_data=torchvision.datasets.CIFAR10('./data',train=True,transform=torchvision.transforms.ToTensor(),download=True)
-test_data=torchvision.datasets.CIFAR10('./data',train=False,transform=torchvision.transforms.ToTensor(),download=True)
-train_dataloader=DataLoader(train_data,batch_size=64)
-test_dataloader=DataLoader(test_data,batch_size=64)
-
-train_dataset_size=len(train_data)
-test_dataset_size=len(test_data)
-
-device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-#net=resnet()#网络模型实例化
-net=net.to(device)
-
-loss_fn=nn.CrossEntropyLoss()#损失函数实例化
-loss_fn=loss_fn.to(device)
-
-learning_rate=1e-2#学习率
-optimizer=torch.optim.SGD(net.parameters(),lr=learning_rate)#优化器实例化
-
-total_train_step=0
-total_test_step=0
-
-epoch=30
-for i in range(epoch):
-    print('-------第{}轮-------'.format(i+1))
-    total_train_loss=0
-    train_score=0
-    train_accuracy=0
-    for data in train_dataloader:
-        imgs,targets=data
-        imgs=imgs.to(device)
-        targets=targets.to(device)
-        output=net(imgs)
-        train_score+=(output.argmax(1)==targets).sum()
-        loss=loss_fn(output,targets)
-        total_train_loss+=loss
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total_train_step+=1
-        # if total_train_step%100==0:
-        #     writer.add_scalar('tain',loss.item(),total_train_step)
-        #print('损失',loss)
-    train_accuracy=train_score/train_dataset_size
-    print('total_train_loss=',total_train_loss.item())
-    print('train_accuracy=',train_accuracy.item())
-    test_score=0
-    test_accuracy=0
-    total_test_loss=0
-    with torch.no_grad():
-        for data in test_dataloader:
-            imgs, targets = data
-            imgs = imgs.to(device)
-            targets = targets.to(device)
-            output = net(imgs)
-            loss = loss_fn(output, targets)
-            total_test_loss+=loss
-            total_test_step+=1
-            test_score+=(output.argmax(1)==targets).sum()
-        test_accuracy=test_score/test_dataset_size
-        #writer.add_scalar('test',loss.item(),total_test_step)
-        #torch.save('net{}.pth'.format(i))
-        print('total_test_loss=',total_test_loss.item())
-        print('test_accuracy=',test_accuracy.item())
+a = torch.tensor([1, 2, 3, 4])
+print(a)
+b = torch.tensor([4, 5, 6])
+print(b)
+x, y = torch.meshgrid(a, b)
+print(x)
+print(y)
+ 
+结果显示：
+tensor([1, 2, 3, 4])
+tensor([4, 5, 6])
+tensor([[1, 1, 1],
+        [2, 2, 2],
+        [3, 3, 3],
+        [4, 4, 4]])
+tensor([[4, 5, 6],
+        [4, 5, 6],
+        [4, 5, 6],
+        [4, 5, 6]])
 ```
 
 -------
@@ -1620,6 +1568,4 @@ for i in range(epoch):
 # 语义分割
 
 -------------
-
-
 
