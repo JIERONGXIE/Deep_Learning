@@ -460,6 +460,12 @@ vgg16_false.classifier[6]=nn.Linear(4096,10)
 print(vgg16_false)
 ```
 
+``` python
+net = torchvision.models.resnet50(pretrained=False)
+layer = nn.Sequential(*list(net.children())[:-2])#list后弃用后两层网络，*解包
+self.resnet = resnet_layer
+```
+
 ---
 
 # 网络模型的保存和加载
@@ -531,6 +537,7 @@ total_train_step=0
 total_test_step=0
 
 epoch=30
+net.train()
 for i in range(epoch):
     print('-------第{}轮-------'.format(i+1))
     total_train_loss=0
@@ -557,6 +564,7 @@ for i in range(epoch):
     test_score=0
     test_accuracy=0
     total_test_loss=0
+    net.eval()
     with torch.no_grad():
         for data in test_dataloader:
             imgs, targets = data
@@ -1459,7 +1467,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 net=models.resnet18(pretrained=False)
-net.fc=nn.Linear(512,10)
+net.fc=nn.Linear(net.fc.in_features,10)
 #writer=SummaryWriter('logs')#可视化
 
 train_data=torchvision.datasets.CIFAR10('./data',train=True,transform=torchvision.transforms.ToTensor(),download=True)
@@ -1472,7 +1480,6 @@ test_dataset_size=len(test_data)
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-#net=resnet()#网络模型实例化
 net=net.to(device)
 
 loss_fn=nn.CrossEntropyLoss()#损失函数实例化
@@ -1485,7 +1492,7 @@ total_train_step=0
 total_test_step=0
 
 epoch=30
-model.train()
+net.train()
 for i in range(epoch):
     print('-------第{}轮-------'.format(i+1))
     total_train_loss=0
@@ -1512,7 +1519,7 @@ for i in range(epoch):
     test_score=0
     test_accuracy=0
     total_test_loss=0
-    model.eval()
+    net.eval()
     with torch.no_grad():
         for data in test_dataloader:
             imgs, targets = data
