@@ -232,6 +232,84 @@ plt.imshow(test)
 
 ---
 
+## 亮度
+
+``` python
+def apply(img,transforms,title):
+    img_1=transforms(img)
+    img_2=transforms(img)
+    img_3=transforms(img)
+    img_4=transforms(img)
+    #plt.suptitle(title)
+    plt.figure("Image")#,figsize=(6,4.5),facecolor='r',edgecolor='g'。窗口名
+    plt.suptitle(title)#画布名
+    plt.axis('on')#打开坐标轴
+    plt.subplot(2,2,1), plt.title('1')
+    plt.imshow(img_1)
+    plt.subplot(2,2,2), plt.title('2')
+    plt.imshow(img_2)
+    plt.subplot(2,2,3), plt.title('3')
+    plt.imshow(img_3)
+    plt.subplot(2,2,4), plt.title('4')
+    plt.imshow(img_4)
+    plt.tight_layout()#自动排版
+    plt.show()
+
+transf = transforms.Compose([
+                    transforms.Resize(300),
+                    transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0), # 亮度为50%-150%
+                    #transforms.ToTensor(), 
+                ])
+img=Image.open('catdog.jpg')
+apply(img, transforms=transf, title='brightness')
+```
+
+-----
+
+## 对比度
+
+``` python
+image=Image.open('catdog.jpg')
+transf = transforms.Compose([
+                    transforms.Resize(300),
+                    transforms.ColorJitter(brightness=0, contrast=0.5, saturation=0, hue=0), # 对比度为50%-150%
+                    #transforms.ToTensor(), 
+                ])
+apply(image, transforms=transf, title='contrast')
+```
+
+------
+
+## 饱和度
+
+``` python
+transf = transforms.Compose([
+                    transforms.Resize(300),
+                    transforms.ColorJitter(brightness=0, contrast=0, saturation=0.5, hue=0), # 饱和度为50%-150%
+                    #transforms.ToTensor(), 
+                ])
+apply(image, transforms=transf, title='saturation')
+```
+
+-----
+
+## 色调
+
+``` python
+transf = transforms.Compose([
+                    transforms.Resize(300),
+                    transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0.5), # -05-0.5
+                    #transforms.ToTensor(), 
+                ])
+apply(image, transforms=transf, title='hue')
+```
+
+-------
+
+
+
+---------
+
 # torchvision的数据集使用
 
 -----
@@ -733,7 +811,7 @@ def init_normal(m):
         #nn.init.xavier_uniform_(m.weight)
         nn.init.zeros_(m.bias)
 
-net.module.apply(init_normal)
+net.module.apply(init_normal)#迭代每一层网络并初始化
 print(net.module[0].weight.data)
 ```
 
@@ -1572,7 +1650,327 @@ tensor([[4, 5, 6],
 
 -------
 
+# 转置卷积
+
+``` python
+import torch
+import torch.nn as nn
+
+
+def transposed_conv_official():
+    feature_map = torch.as_tensor([[1, 0],
+                                   [2, 1]], dtype=torch.float32).reshape([1, 1, 2, 2])
+    print(feature_map)
+    trans_conv = nn.ConvTranspose2d(in_channels=1, out_channels=1,
+                                    kernel_size=3, stride=1, bias=False)
+    trans_conv.load_state_dict({"weight": torch.as_tensor([[1, 0, 1],
+                                                           [0, 1, 1],
+                                                           [1, 0, 0]], dtype=torch.float32).reshape([1, 1, 3, 3])})
+    print(trans_conv.weight)
+    output = trans_conv(feature_map)
+    print(output)
+
+
+def transposed_conv_self():
+    feature_map = torch.as_tensor([[0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 1, 0, 0, 0],
+                                   [0, 0, 2, 1, 0, 0],
+                                   [0, 0, 0, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0]], dtype=torch.float32).reshape([1, 1, 6, 6])
+    print(feature_map)
+    conv = nn.Conv2d(in_channels=1, out_channels=1,
+                     kernel_size=3, stride=1, bias=False)
+    conv.load_state_dict({"weight": torch.as_tensor([[0, 0, 1],
+                                                     [1, 1, 0],
+                                                     [1, 0, 1]], dtype=torch.float32).reshape([1, 1, 3, 3])})
+    print(conv.weight)
+    output = conv(feature_map)
+    print(output)
+
+
+def main():
+    transposed_conv_official()
+    print("---------------")
+    transposed_conv_self()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+
+
+
+
+
+
+--------
+
 # 语义分割
 
 -------------
 
+``` python
+import os
+import copy
+from PIL import Image
+import matplotlib.pyplot as plt
+from torchvision import transforms
+import torch
+import numpy as np
+from torchvision import models
+import torch
+import torchvision
+from torch import nn
+from torch.utils.data import DataLoader
+#from torch.utils.tensorboard import SummaryWriter
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import time
+import warnings
+warnings.filterwarnings("ignore")
+
+def read_path(root, is_train=True):
+    txt_fname = root + '/ImageSets/Segmentation/' + ('train.txt' if is_train else 'val.txt')
+    with open(txt_fname, 'r') as f:
+        filenames = f.read().split()
+    images_path = [os.path.join(root, 'JPEGImages', i + '.jpg') for i in filenames]
+    labels_path = [os.path.join(root, 'SegmentationClass', i + '.png') for i in filenames]
+    return images_path, labels_path#都是一维list,元素是路径
+
+def rand_crop(image, label, height, width):#数据预处理
+    i, j, h, w = transforms.RandomCrop.get_params(image, output_size=(height, width))
+    image = transforms.functional.crop(image, i, j, h, w)
+    label = transforms.functional.crop(label, i, j, h, w)
+    return image, label
+
+VOC_COLORMAP = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
+                [0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
+                [64, 0, 0], [192, 0, 0], [64, 128, 0], [192, 128, 0],
+                [64, 0, 128], [192, 0, 128], [64, 128, 128], [192, 128, 128],
+                [0, 64, 0], [128, 64, 0], [0, 192, 0], [128, 192, 0],
+                [0, 64, 128]]
+
+VOC_CLASSES = ['background', 'aeroplane', 'bicycle', 'bird', 'boat',
+               'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
+               'diningtable', 'dog', 'horse', 'motorbike', 'person',
+               'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
+
+colormap2label = torch.zeros(256 ** 3, dtype=torch.uint8)
+for i, colormap in enumerate(VOC_COLORMAP):
+    colormap2label[(colormap[0] * 256 + colormap[1]) * 256 + colormap[2]] = i
+
+def label_indices(colormap):
+    colormap = np.array(colormap).astype('int32')
+    idx = ((colormap[:, :, 0] * 256 + colormap[:, :, 1]) * 256
+           + colormap[:, :, 2])
+    return colormap2label[idx]
+
+class VOCDataset(torch.utils.data.Dataset):
+    def __init__(self, is_train, crop_size, voc_path):
+
+        #crop_size: (h, w)
+
+        self.mean = np.array([0.485, 0.456, 0.406])
+        self.std = np.array([0.229, 0.224, 0.225])
+
+        self.transf = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=self.mean, std=self.std)
+        ])
+
+        self.crop_size = crop_size
+
+        images_path, labels_path = read_path(root=voc_path, is_train=is_train)
+        self.images_path = self.filter(images_path)  # images list
+        self.labels_path = self.filter(labels_path)  # labels list
+        print('Read ' + str(len(self.images_path)) + ' valid examples')
+
+    def filter(self, imgs):  # 过滤掉尺寸小于crop_size的图片
+        return [img for img in imgs if (
+                Image.open(img).size[1] >= self.crop_size[0] and
+                Image.open(img).size[0] >= self.crop_size[1])]
+
+    def __getitem__(self, index):
+        image = self.images_path[index]
+        label = self.labels_path[index]
+        image = Image.open(image).convert('RGB')
+        label = Image.open(label).convert('RGB')
+
+        image, label = rand_crop(image, label,
+                                     *self.crop_size)
+        image = self.transf(image)
+        label = label_indices(label)
+
+        return image, label#float32 tensor, uint8 tensor
+
+    def __len__(self):
+        return len(self.images_path)
+
+def bilinear_kernel(in_channels, out_channels, kernel_size):
+    factor = (kernel_size + 1) // 2
+    if kernel_size % 2 == 1:
+        center = factor - 1
+    else:
+        center = factor - 0.5
+    og = (torch.arange(kernel_size).reshape(-1, 1),
+          torch.arange(kernel_size).reshape(1, -1))
+    filt = (1 - torch.abs(og[0] - center) / factor) * \
+           (1 - torch.abs(og[1] - center) / factor)
+    weight = torch.zeros((in_channels, out_channels,
+                          kernel_size, kernel_size))
+    weight[range(in_channels), range(out_channels), :, :] = filt
+    return weight
+
+def train_model(model:nn.Module, criteon, optimizer, scheduler, num_epochs=20):
+    time_since = time.time()
+    best_acc = 0.0
+    best_model_wts = copy.deepcopy(model.state_dict())
+
+    for epoch in range(num_epochs):
+        print('Epoch {}/{}'.format(epoch+1, num_epochs))
+        print('-'*10)
+
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                scheduler.step()
+                model.train()
+            else:
+                model.eval()
+
+            run_loss = 0.0
+            run_corrects = 0.0
+            # 迭代一个epoch
+            for inputs, labels in dataloaders[phase]:
+                inputs, labels = inputs.to(device), labels.to(device)
+                optimizer.zero_grad()
+
+                with torch.set_grad_enabled(phase=='train'):
+                    outputs = model(inputs)  # [5, 21, 320, 480]
+                    loss = criteon(outputs, labels.long())
+
+                    if phase=='train':
+                        loss.backward()
+                        optimizer.step()
+
+                run_loss += loss.item()*inputs.size(0)
+                run_corrects += (outputs.argmax(1)==labels).sum()/(480*320)
+
+            epoch_loss = run_loss / dataset_sizes[phase]
+            epoch_acc = run_corrects.double() / dataset_sizes[phase]
+
+            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+
+            if phase=='val' and epoch_acc>best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
+    time_elapsed = time.time() - time_since
+    print('Training complete in: {:.0f}m {:.0f}s'.format(time_elapsed//60, time_elapsed%60))
+    model.load_state_dict(best_model_wts)
+    return model
+
+device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+net=models.resnet18(pretrained=True)
+net=nn.Sequential(*list(net.children())[:-2])
+
+num_classes = 21
+net.add_module('final_conv', nn.Conv2d(512, num_classes, kernel_size=1))
+net.add_module('transpose_conv', nn.ConvTranspose2d(num_classes, num_classes,
+                                    kernel_size=64, padding=16, stride=32))
+conv_trans = nn.ConvTranspose2d(3, 3, kernel_size=4, padding=1, stride=2,
+                            bias=False)
+conv_trans.weight.data.copy_(bilinear_kernel(3, 3, 4))
+W = bilinear_kernel(num_classes, num_classes, 64).to(device)
+net.transpose_conv.weight.data.copy_(W)
+net=net.to(device)
+
+# img = img = torchvision.transforms.ToTensor()(Image.open('catdog.jpg'))
+# X = img.unsqueeze(0)
+# Y = conv_trans(X)
+# out_img = Y[0].permute(1, 2, 0).detach()
+# print(X.permute(1, 2, 0).shape)
+# print(out_img.shape)
+
+loss_fn=nn.CrossEntropyLoss()
+loss_fn=loss_fn.to(device)
+
+learning_rate=1e-2
+optimizer=torch.optim.SGD(net.parameters(),lr=learning_rate, weight_decay=1e-4, momentum=0.9)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.1)
+
+crop_size=(320,480)
+batch_size=32
+voc_path=r'G:\\voc\\VOC2012'
+
+train_dataset=VOCDataset(True,crop_size=crop_size,voc_path=voc_path)
+val_dataset=VOCDataset(False,crop_size=crop_size,voc_path=voc_path)
+dataset_sizes={'train':len(train_dataset),'val':len(val_dataset)}
+dataloaders={'train':DataLoader(train_dataset,batch_size=batch_size),
+             'val':DataLoader(val_dataset,batch_size=batch_size)}
+
+mean=torch.tensor([0.485, 0.456, 0.406]).reshape(3,1,1).to(device)
+std=torch.tensor([0.229, 0.224, 0.225]).reshape(3,1,1).to(device)
+
+def show_images(imgs, num_rows, num_cols, scale=2):
+    # a_img = np.asarray(imgs)
+    figsize = (num_cols * scale, num_rows * scale)
+    _, axes = plt.subplots(num_rows, num_cols, figsize=figsize)
+    for i in range(num_rows):
+        for j in range(num_cols):
+            axes[i][j].imshow(imgs[i * num_cols + j])
+            axes[i][j].axes.get_xaxis().set_visible(False)
+            axes[i][j].axes.get_yaxis().set_visible(False)
+    plt.show()
+    return axes
+
+def label2image(pred):
+    # pred_shape = [320,480]
+    colormap = torch.tensor(VOC_COLORMAP,device=device,dtype=int)# [21,3]
+    # x_shape = [320,480]
+    x = pred.long()
+    return (colormap[x,:]).data.cpu().numpy()
+
+def visualize_model(model:nn.Module, num_images=4):
+    was_training = model.training
+    model.eval()
+    images_so_far = 0
+    n, imgs = num_images, []
+    with torch.no_grad():
+        for i, (inputs, labels) in enumerate(dataloaders['val']):
+            inputs, labels = inputs.to(device), labels.to(device) # shape = [b,3,320,480]
+            outputs = model(inputs)
+            pred = torch.argmax(outputs, dim=1) # shape = [b,320,480]
+            inputs_nd = (inputs*std+mean).permute(0,2,3,1)*255 # shape = [b,320,480,3]
+
+            for j in range(num_images):
+                images_so_far += 1
+                pred1 = label2image(pred[j]) # numpy.ndarray (320, 480, 3)
+                imgs += [inputs_nd[j].data.int().cpu().numpy(), pred1, label2image(labels[j])]
+                if images_so_far == num_images:
+                    model.train(mode=was_training)
+                    show_images(imgs[::3] + imgs[1::3] + imgs[2::3], 3, n)
+                    return model.train(mode=was_training)
+
+def main():
+    train_net=train_model(net,loss_fn,optimizer,lr_scheduler,15)
+    torch.save(train_model,'voc.pth')
+    # test_net=torch.load('voc.pth')
+    # print('load model successfully')
+    # visualize_model(test_net)
+    # print('finish')
+
+if __name__=='__main__':
+    main()
+```
+
+----------
+
+# data和detach
+
+- .data 和.detach只取出本体tensor数据，舍弃了grad，grad_fn等额外反向图计算过程需保存的额外信息
+- .data取出本体tensor后仍与原数据共享内存，在使用in-place操作后，会修改原数据的值，而如果在反向传播过程中使用到原数据会导致计算错误，而使用.detach后，如果在反向传播过程中发现原数据被修改过会报错，更加安全
+
+-----

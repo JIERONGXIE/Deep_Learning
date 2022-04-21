@@ -526,56 +526,6 @@ $$
 
 ![](image\YOLO.png)
 
-
-
-
-
---------
-
-## Pascal VOC2012原始数据集
-
-------
-
-- 五个文件夹
-
-1. Annotation：存放xml格式的标注信息
-
-2. JPEGImages：存放所有图片，包括训练图片和测试图片
-
-3. SegmentationClass：语义分割任务中用到的label图片
-
-4. SegmentationObject： 实例分割任务用到的label图片
-
-5. ImageSets：存放每一种任务对应的数据，其又划分为四个文件夹
-
-   - Action：存放人体动作的txt文件
-
-   - Layout：存放人体部位的txt文件
-
-   - Main：存放类别信息的txt文件
-
-   - Segmentation：存放分割训练的txt文件
-
-----
-
-## benchmark_RELEASE数据集
-
------
-
-- 两个文件夹
-
-1. benchmark_code_RELEASE：相关评价指标的matlab文件
-
-2. dataset：包括cls、img、inst三个文件夹和train.txt、val.txt两个文件
-
-   - cls：语义分割的mat标注文件
-
-   - img：分割图像
-
-   - inst：实例分割的mat标注文件
-
-- mat格式为matlab文件的一种，其中文件中主要包含了物体的类别、边界、分割标注三类信息
-
 ----
 
 ## 转置卷积
@@ -584,6 +534,8 @@ $$
 
 - 转置卷积可以用来增大输入高宽
 
+![](image\转置卷积计算.png)
+
 ![](image\为什么叫转置.png)
 
 ![](image\转置卷积是一种卷积.png)
@@ -591,3 +543,26 @@ $$
 ![](image\重新排列输入和核.png)
 
 ![](image\填充为P.png)
+
+![](image\填充P步幅S.png)
+
+![](image\形状换算.png)
+
+![](image\与反卷积的关系.png)
+
+![](image\FCN.png)
+
+-------
+
+## 转置卷积理解
+
+-----
+
+- 结论
+
+$$
+Output=S(Input-1)+K-2P
+$$
+
+------
+
